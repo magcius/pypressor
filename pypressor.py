@@ -5,6 +5,11 @@ import os.path
 import bz2
 import zlib
 
+class NoCompression(object):
+    def compress(self, string):
+        return string
+NoCompression = NoCompression()
+
 def compact_repr(elem):
     if isinstance(elem, dict):
         return "{" + ','.join("'%s':%s" % (k, compact_repr(v)) for k, v in elem.iteritems()) + "}"
@@ -12,13 +17,11 @@ def compact_repr(elem):
         return "(" + ','.join(compact_repr(v) for v in elem) + ")"
     return repr(elem)
 
-def pypressor(filenames, compression=bz2, base64=True, linebreak=True, recursive=False, comment=True, shebang=True):
+def pypressor(filenames, compression=bz2, base64=True, recursive=False, comment=True, shebang=True):
     def compress_string(string):
         final = compression.compress(string)
         if base64:
-            final = final.encode("base64")
-            if not linebreak:
-                final = final.replace("\n", "")
+            final = final.encode("base64").replace("\n", "")
         return final
 
     def file_data(fn):
@@ -42,7 +45,7 @@ def pypressor(filenames, compression=bz2, base64=True, linebreak=True, recursive
 
     if len(filenames) == 1 and not os.path.isdir(filenames[0]):
         if not os.path.exists(filenames[0]):
-            print "error: %r does not exist" % (filename,)
+            print "error: %r does not exist" % (filenames[0],)
             sys.exit(1)
         fn, mode, cont = file_data(filenames[0])
         data += ('n=%r;f=open(n,"w");f.write(%s.decomp'
@@ -99,10 +102,11 @@ def main():
                    const=zlib, default=bz2, help="Use zlib for compression")
     opt.add_option("-b", "--bz2", action="store_const", dest="compression",
                    const=bz2, help="Use bz2 for compression")
+    opt.add_option("-n", "--no-compression", action="store_const", dest="compression",
+                   const=NoCompression, help="Don't use compression")
+    
     opt.add_option("--b64", "--no-base64", action="store_false", dest="base64",
                    default=True, help="Don't use base64 when outputting the compressed string")
-    opt.add_option("--nl", "--no-newline", action="store_false", dest="linebreak",
-                   default=True, help="Strip newlines when outputting the base64 string")
     opt.add_option("-r", "--recursive", action="store_true", dest="recursive",
                    default=False, help="Recursively search folders to compress folders")
     opt.add_option("-I", "--inplace", action="store_true", dest="inplace",

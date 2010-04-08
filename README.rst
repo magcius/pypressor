@@ -31,15 +31,15 @@ There's a bunch of other options::
     Usage: pypressor.py [options] filename1 filename2 ... filenameN
 
     Options:
-      -h, --help          show this help message and exit
-      -z, --zlib          Use zlib for compression
-      -b, --bz2           Use bz2 for compression
-      --b64, --no-base64  Don't use base64 when outputting the compressed string
-      --nl, --no-newline  Strip newlines when outputting the base64 string
-      -r, --recursive     Recursively search folders to compress folders
-      -I, --inplace       Replace files inplace with their compressed versions
-      --nc, --no-comment  Don't emit a comment in the compressed version
-      --ns, --no-shebang  Don't emit a shebang in the compressed version
+      -h, --help            show this help message and exit
+      -z, --zlib            Use zlib for compression
+      -b, --bz2             Use bz2 for compression
+      -n, --no-compression  Don't use compression
+      --b64, --no-base64    Don't use base64 when outputting the compressed string
+      -r, --recursive       Recursively search folders to compress folders
+      -I, --inplace         Replace files inplace with their compressed versions
+      --nc, --no-comment    Don't emit a comment in the compressed version
+      --ns, --no-shebang    Don't emit a shebang in the compressed version
 
 Conclusion
 ----------
