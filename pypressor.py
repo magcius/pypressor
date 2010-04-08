@@ -41,7 +41,7 @@ def pypressor(filenames, compression=bz2, base64=True, linebreak=True, recursive
     data += "import os,"+compression.__name__+";"
 
     if len(filenames) == 1 and not os.path.isdir(filenames[0]):
-        if not os.path.exists(filename):
+        if not os.path.exists(filenames[0]):
             print "error: %r does not exist" % (filename,)
             sys.exit(1)
         mode, data = file_data(filenames[0])
