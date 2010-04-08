@@ -129,9 +129,8 @@ def main():
         return
 
     compressed = pypressor(filenames, options.compression,
-                           options.base64, options.linebreak,
-                           options.recursive, options.comment,
-                           options.shebang)
+                           options.base64, options.recursive,
+                           options.comment, options.shebang)
     print compressed
 
 if __name__ == "__main__":
