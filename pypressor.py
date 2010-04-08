@@ -44,10 +44,10 @@ def pypressor(filenames, compression=bz2, base64=True, linebreak=True, recursive
         if not os.path.exists(filenames[0]):
             print "error: %r does not exist" % (filename,)
             sys.exit(1)
-        fn, mode, data = file_data(filenames[0])
+        fn, mode, cont = file_data(filenames[0])
         data += ('n=%r;f=open(n,"w");f.write(%s.decomp'
                  "ress(%r%s));f.close();os.chmod(n,%d)"
-                 "" % (fn, compression.__name__, data,
+                 "" % (fn, compression.__name__, cont,
                        ".decode('base64')" if base64 else "", mode))
     else:
         dir = False
