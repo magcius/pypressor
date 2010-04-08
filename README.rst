@@ -10,15 +10,19 @@ Invocation
 ----------
 
 To compress a single file, you can use::
+
     $ ./pypressor.py myfile.txt
 
 To compress a folder (experimental), you can use::
+
     $ ./pypressor.py myfolder
 
 To compress numerous files into one archive (experimental), you can use::
+
     $ ./pypressor.py file1.txt file2.txt
 
 You can also read from STDIN::
+
     $ echo "My name is Inigo Montoya." | ./pypressor.py -
 
 There's a bunch of other options::
