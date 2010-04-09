@@ -24,12 +24,15 @@ class noencode(object):
         return string
 
 class encodeencode(object):
-    def __init__(self, encoding):
+    def __init__(self, encoding, newlines=False):
         self.encoding = encoding
+        self.newlines = newlines
         self.DECODER = "%%s.decode(%r)" % (self.encoding,)
 
     def encode(self, string):
-        return string.encode(self.encoding)
+        string = string.encode(self.encoding)
+        if self.newlines:
+            string = string.replace("\n", "")
 
     def decode(self, string):
         return string.decode(self.encoding)
