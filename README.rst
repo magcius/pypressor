@@ -25,21 +25,29 @@ You can also read from STDIN::
 
     $ echo "My name is Inigo Montoya." | ./pypressor.py -
 
-There's a bunch of other options::
-    $ ./pypressor.py --help
+There's a couple of neat encoding options to help save space. `ascii85`
+is based on the April Fools RFC for encoding IP addresses. Since it's
+not a codec included with Python, there will be some space taken up
+dedicated to decoding it.
 
-    Usage: pypressor.py [options] filename1 filename2 ... filenameN
+There's a bunch of other options::
+
+    $ ./pypressor.py --help
 
     Options:
       -h, --help            show this help message and exit
-      -z, --zlib            Use zlib for compression
-      -b, --bz2             Use bz2 for compression
-      -n, --no-compression  Don't use compression
+      -c COMPRESSION, --compression=COMPRESSION
+                            The compression algorithm to use. One of 'bz2',
+                            'zlib', or 'none' [default: bz2]
+      -e ENCODING, --encodings=ENCODING
+                            The encoding algorithm to use. One of 'base64',
+                            'uuencode', 'ascii85', 'none' [default: ascii85]
       --b64, --no-base64    Don't use base64 when outputting the compressed string
       -r, --recursive       Recursively search folders to compress folders
       -I, --inplace         Replace files inplace with their compressed versions
       --nc, --no-comment    Don't emit a comment in the compressed version
       --ns, --no-shebang    Don't emit a shebang in the compressed version
+      -p, --paste           Upload the final result to pastebin and print the link
 
 Conclusion
 ----------
