@@ -78,8 +78,8 @@ class ascii85(object):
         return decoded[::-1]
 
 ENCODINGS['none'] = ENCODINGS['no'] = ENCODINGS['n'] = noencode
-base64   = ENCODINGS['base64']   = ENCODINGS['b64'] = ENCODINGS['b'] = encodeencode("base64")
-uuencode = ENCODINGS['uuencode'] = ENCODINGS['uu']  = ENCODINGS['u'] = encodeencode("uuencode")
+base64   = ENCODINGS['base64']   = ENCODINGS['b64'] = ENCODINGS['b'] = encodeencode("base64", True)
+uuencode = ENCODINGS['uuencode'] = ENCODINGS['uu']  = ENCODINGS['u'] = encodeencode("uuencode", True)
 ENCODINGS['ascii85'] = ENCODINGS['a85'] = ENCODINGS['a'] = ascii85
 
 class PasteProvider(object):
@@ -196,7 +196,7 @@ def pypressor(filenames, compression=bz2, encoding=base64, recursive=False, comm
             sys.exit(1)
         fn, mode, cont = file_data(filenames[0])
         data += ('n=%r\nf=open(n,"w")\nf.write('
-                 "%s)\nf.close()\nos.chmod(n,%d)"
+                 "%r)\nf.close()\nos.chmod(n,%d)"
                  "" % (fn,
                  compression.DECODER % (encoding.DECODER % (cont,),), mode))
     else:
@@ -235,11 +235,11 @@ for n in D:
  d=D[n]""" % (compact_repr(files),)
         if needs_dirmach:
             data += """
- if isinstance(d,tuple):f=open(n,"w");f.write(%s);f.close();os.chmod(n,d[0])
+ if isinstance(d,tuple):f=open(n,"w");f.write(%r);f.close();os.chmod(n,d[0])
  elif not os.path.exists(n):os.mkdir(n)"""
         else:
             data += """
- f=open(n,"w");f.write(%s);f.close();os.chmod(n,d[0)]"""
+ f=open(n,"w");f.write(%r);f.close();os.chmod(n,d[0)]"""
         data %= (compression.DECODER % (encoding.DECODER % ("d[1]",),),)
     return data
 
