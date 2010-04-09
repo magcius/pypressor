@@ -33,6 +33,7 @@ class encodeencode(object):
         string = string.encode(self.encoding)
         if self.newlines:
             string = string.replace("\n", "")
+        return string
 
     def decode(self, string):
         return string.decode(self.encoding)
