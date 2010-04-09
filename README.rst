@@ -42,7 +42,6 @@ There's a bunch of other options::
       -e ENCODING, --encodings=ENCODING
                             The encoding algorithm to use. One of 'base64',
                             'uuencode', 'ascii85', 'none' [default: ascii85]
-      --b64, --no-base64    Don't use base64 when outputting the compressed string
       -r, --recursive       Recursively search folders to compress folders
       -I, --inplace         Replace files inplace with their compressed versions
       --nc, --no-comment    Don't emit a comment in the compressed version

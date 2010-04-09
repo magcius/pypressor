@@ -248,8 +248,6 @@ def main():
     opt.add_option("-e", "--encodings", action="store", metavar="ENCODING", default="base64",
                    dest="encoding", help="The encoding algorithm to use. One of "
                    "'base64', 'uuencode', 'ascii85', 'none' [default: %default]")
-    opt.add_option("--b64", "--no-base64", action="store_false", dest="base64",
-                   default=True, help="Don't use base64 when outputting the compressed string")
     opt.add_option("-r", "--recursive", action="store_true", dest="recursive",
                    default=False, help="Recursively search folders to compress folders")
     opt.add_option("-I", "--inplace", action="store_true", dest="inplace",
@@ -270,7 +268,7 @@ def main():
     if options.inplace:
         for fn in filenames:
             compressed = pypressor([fn], options.compression,
-                           options.base64, options.recursive,
+                           options.encoding, options.recursive,
                            options.comment, options.shebang)
             f = open(fn, "w")
             f.write(compressed)
@@ -278,7 +276,7 @@ def main():
         return
 
     compressed = pypressor(filenames, options.compression,
-                           options.base64, options.recursive,
+                           options.encoding, options.recursive,
                            options.comment, options.shebang)
     
     if options.paste:
