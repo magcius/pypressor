@@ -4,6 +4,45 @@ import sys
 import os.path
 import bz2
 import zlib
+import urllib, urllib2
+
+class PasteProvider(object):
+    """
+    Abstract pastebin service provider. Subclasses should be able to paste text
+    to a specific pastebin website and return the appropriate link
+    
+    TODO: add another cmdline option to specify paste website, add more paste
+          providers
+    """
+    
+    def paste(self, text):
+        """
+        Should return a string url to the paste
+        """
+        raise Error("No paste provider given")
+        
+        
+    def post(self, url, params):
+        """
+        Makes a simple post request to a given url, returning the received
+        data or None on an error
+        """
+        
+        try:
+            return urllib2.urlopen(url, urllib.urlencode(params)).read().strip()
+        except urllib2.URLError, IOError:
+            return None
+    
+    
+class PastebincomProvider(PasteProvider):
+    def paste(self, text):
+        ret = self.post("http://www.pastebin.com/api_public.php", {
+            "paste_code": text,
+            "paste_expire_date": "N",
+            "paste_format": "python"})
+            
+        return ret
+        
 
 class NoCompression(object):
     def compress(self, string):
@@ -115,6 +154,8 @@ def main():
                    default=True, help="Don't emit a comment in the compressed version")
     opt.add_option("--ns", "--no-shebang", action="store_false", dest="shebang",
                    default=True, help="Don't emit a shebang in the compressed version")
+    opt.add_option("-p", "--paste", action="store_true", dest="paste",
+                   default=False, help="Upload the final result to pastebin and print the link")
     options, filenames = opt.parse_args()
     if len(filenames) < 1:
         opt.print_help()
@@ -131,6 +172,14 @@ def main():
     compressed = pypressor(filenames, options.compression,
                            options.base64, options.recursive,
                            options.comment, options.shebang)
+    
+    if options.paste:
+        url = PastebincomProvider().paste(compressed)
+        if url is not None:
+            print url
+            return
+        print "Unable to paste result. Printing instead:"
+        
     print compressed
 
 if __name__ == "__main__":
