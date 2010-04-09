@@ -4,6 +4,7 @@ import sys
 import os
 import urllib
 import urllib2
+import string
 
 try:
     from cStringIO import StringIO
@@ -15,11 +16,15 @@ COMPRESSIONS = {}
 ENCODINGS    = {}
 
 class noencode(object):
-    DECODER = "%r"
     @staticmethod
     def encode(string):
         return string
 
+    @staticmethod
+    def get_dependencies(string, multi=False):
+        return "", "", ""
+
+    @staticmethod
     def decode(string):
         return string
 
@@ -27,13 +32,15 @@ class encodeencode(object):
     def __init__(self, encoding, newlines=False):
         self.encoding = encoding
         self.newlines = newlines
-        self.DECODER = "%%s.decode(%r)" % (self.encoding,)
 
     def encode(self, string):
         string = string.encode(self.encoding)
         if self.newlines:
             string = string.replace("\n", "")
         return string
+
+    def get_dependencies(self, string, multi=False):
+        return "", "", "%%s.decode(%r)" % (self.encoding,)
 
     def decode(self, string):
         return string.decode(self.encoding)
@@ -42,40 +49,79 @@ none = COMPRESSIONS['none'] = COMPRESSIONS['no'] = COMPRESSIONS['n'] = noencode
 bz2  = COMPRESSIONS['bz2']  = COMPRESSIONS['b'] = encodeencode("bz2")
 zlib = COMPRESSIONS['zlib'] = COMPRESSIONS['z'] = encodeencode("zlib")
 
-A85_CHARS = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!#$%&()*+-;<=>?@^_`{|}~"
+A85_CHARS = string.digits+string.ascii_letters+"!#$%&()*+-;<=>?@^_`{|}~"
 
 class ascii85(object):
-    MODULES = "struct"
-    DECODER = "''.join(struct.pack('<L',i)for i in[sum(c*85**i for i,c in enumerate(x))for x in(zip(*[iter(map(%r.find,%%r))]*5))])" % (A85_CHARS,)
+    HEADER1 = """def D(S,d=''):
+ for c in zip(*[iter(S)]*5):
+  if c[0]==',':d+='\\0'*int(''.join(c[1:]),16);continue
+  n=sum((s.digits+s.ascii_letters+'!#$%&()*+-;<=>?@^_`{|}~').find(x)*85**i for i,x in enumerate(c))
+  while n:d+=chr(n&255);n>>=8
+ return d
+"""
+    DECODER1 = "D(%s)"
+    DECODER2 = "''.join(struct.pack('>L',i)for i in[sum(c*85**i for i,c in enumerate(x))for x in(zip(*[iter(map((s.digits+s.ascii_letters+'!#$%%&()*+-;<=>?@^_`{|}~').find,%s))]*5))])"
 
     @staticmethod
     def encode(string):
         """
         Encode a string into its ascii85 counterpart.
         """
-        for chunk in zip(*[iter(string)]*4):
+        encoded = []
+        chunks = zip(*[iter(string)]*4)
+        leftover = len(string) & 3
+        if leftover:
+            chunks.append(tuple(string[-leftover:]))
+ 
+        for chunk in chunks:
+            if chunk == ("\0",)*len(chunk):
+                new0len = 0
+                if encoded and encoded[-1][0] == ",":
+                    new0len = len(chunk)+int(encoded[-1][1:],16)
+                if 0 < new0len <= 0xFFFF:
+                    encoded[-1] = ",%04x" % (new0len,)
+                else:
+                    encoded.append(",%04x" % (len(chunk),))
+                continue
+ 
             num = 0
-            for i in string:
+            for i in chunk[::-1]:
                 num <<= 8
-                num |= ord(i)
-            encoded = ""
-            while num:
-                encoded += A85_CHARS[num%85]
+                num  |= ord(i)
+            S = ""
+            for i in reversed(xrange(5)):
+                S += A85_CHARS[num%85]
                 num /= 85
-        return encoded
+            encoded.append(S)
+            num = 0
+            while chunk[-1] == "\0":
+                num += 1
+                chunk = chunk[:-1]
+            if num:
+                encoded.append(",%04x" % (num,))
+        return ''.join(encoded)
+
+    @classmethod
+    def get_dependencies(c, string, multi=False):
+        if "," in string or multi:
+            return ",string as s", c.HEADER1, c.DECODER1
+        return ",struct,string as s", "", c.DECODER2
 
     @staticmethod
     def decode(string):
         """
         Decode an ascii85-encoded string into its original message.
         """
+        decoded = ""
         for chunk in zip(*[iter(string)]*5):
-            num = sum(A85_CHARS.find(c)*85**i for i, c in enumerate(chunk))
-            decoded = ""
-            while num:
-                decoded += chr(num & 0xFF)
-                num >>= 8
-        return decoded[::-1]
+            if chunk[0] == ",":
+                decoded += "\0"*int(''.join(chunk[1:]),16)
+            else:
+                num = sum(A85_CHARS.find(c)*85**i for i, c in enumerate(chunk))
+                while num:
+                    decoded += chr(num & 0xFF)
+                    num >>= 8
+        return decoded
 
 ENCODINGS['none'] = ENCODINGS['no'] = ENCODINGS['n'] = noencode
 base64   = ENCODINGS['base64']   = ENCODINGS['b64'] = ENCODINGS['b'] = encodeencode("base64", True)
@@ -183,22 +229,21 @@ def pypressor(filenames, compression=bz2, encoding=base64, recursive=False, comm
             f.close()
         return fn, mode, cont
 
-    data = ""
+    data, imports, header, body  = "", "import os", "", ""
 
     if shebang: data += "#!/usr/bin/env python\n"
     if comment: data += "# Please run this file with Python.\n"
-
-    data += "import os\n"
 
     if len(filenames) == 1 and not os.path.isdir(filenames[0]):
         if not os.path.exists(filenames[0]):
             print "error: %r does not exist" % (filenames[0],)
             sys.exit(1)
         fn, mode, cont = file_data(filenames[0])
-        data += ('n=%r\nf=open(n,"w")\nf.write('
-                 "%r)\nf.close()\nos.chmod(n,%d)"
-                 "" % (fn,
-                 compression.DECODER % (encoding.DECODER % (cont,),), mode))
+        emod, ehead, edecode = encoding.get_dependencies(cont)
+        cmod, chead, cdecode = compression.get_dependencies(cont)
+        body = ('n=%r\nf=open(n,"w")\nf.write('
+                "%s)\nf.close()\nos.chmod(n,%d)" % (fn,
+                 cdecode % (edecode % (repr(cont),),), mode))
     else:
         files = {}
         needs_dirmach = False
@@ -230,17 +275,24 @@ def pypressor(filenames, compression=bz2, encoding=base64, recursive=False, comm
                 filename, mode, cont = file_data(filename)
                 files[filename] = mode, cont
 
-        data += """D=%s
+        emod, ehead, edecode = encoding.get_dependencies("", True)
+        cmod, chead, cdecode = compression.get_dependencies("", True)
+
+        body = """D=%s
 for n in D:
  d=D[n]""" % (compact_repr(files),)
         if needs_dirmach:
-            data += """
- if isinstance(d,tuple):f=open(n,"w");f.write(%r);f.close();os.chmod(n,d[0])
+            body += """
+ if isinstance(d,tuple):f=open(n,"w");f.write(%s);f.close();os.chmod(n,d[0])
  elif not os.path.exists(n):os.mkdir(n)"""
         else:
-            data += """
- f=open(n,"w");f.write(%r);f.close();os.chmod(n,d[0)]"""
-        data %= (compression.DECODER % (encoding.DECODER % ("d[1]",),),)
+            body += """
+ f=open(n,"w");f.write(%s);f.close();os.chmod(n,d[0)]"""
+        body %= (cdecode % (edecode % ("d[1]",),),)
+
+    imports += emod + cmod
+    data += (imports + "\n" + ehead + chead + body)
+
     return data
 
 def main():
@@ -290,7 +342,7 @@ def main():
             return
         print "Unable to paste result. Printing instead:"
         
-    print compressed
+    sys.stdout.write(compressed)
 
 if __name__ == "__main__":
     main()
