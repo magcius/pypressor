@@ -6,11 +6,6 @@ import urllib
 import urllib2
 import string
 
-try:
-    from cStringIO import StringIO
-except ImportError:
-    from StringIO import StringIO
-
 
 COMPRESSIONS = {}
 ENCODINGS    = {}
