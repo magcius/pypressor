@@ -15,7 +15,6 @@ ENCODINGS    = {}
 class noencode(object):
     modules = ""
     decoder = "S=%s"
-    decoder_args = 1
     @staticmethod
     def encode(string):
         return string
@@ -26,11 +25,10 @@ class noencode(object):
 
 class encodeencode(object):
     modules = ""
-    decoder_args = 1
-    def __init__(self, encoding, newlines=False):
+    def __init__(self, encoding, newlines=False, emitS=False):
         self.encoding = encoding
         self.newlines = newlines
-        self.decoder = "S=%%s.decode(%r)" % (self.encoding,)
+        self.decoder = "%s%%s.decode(%r)" % ("S=" if emitS else "", self.encoding)
 
     def encode(self, string):
         string = string.encode(self.encoding)
@@ -42,15 +40,14 @@ class encodeencode(object):
         return string.decode(self.encoding)
 
 none = COMPRESSIONS['none'] = COMPRESSIONS['no'] = COMPRESSIONS['n'] = noencode
-bz2  = COMPRESSIONS['bz2']  = COMPRESSIONS['b'] = encodeencode("bz2")
-zlib = COMPRESSIONS['zlib'] = COMPRESSIONS['z'] = encodeencode("zlib")
+bz2  = COMPRESSIONS['bz2']  = COMPRESSIONS['b'] = encodeencode("bz2", emitS=True)
+zlib = COMPRESSIONS['zlib'] = COMPRESSIONS['z'] = encodeencode("zlib", emitS=True)
 
 A85_CHARS = string.digits+string.letters+"!#$%&()*+-;<=>?@^_`{|}~"
 
 class ascii85(object):
     modules = ",struct,string as s"
     decoder = "A,B=%s;S=''.join(struct.pack('<L',i)for i in(sum((s.digits+s.letters+'!#$%%&()*+-;<=>?@^_`{|}~').find(c)*85**i for i,c in enumerate(x))for x in zip(*[iter(A)]*5)))[:B]"
-    decoder_args = 2
 
     @staticmethod
     def encode(string):
@@ -180,13 +177,13 @@ os.chmod(n,%d)
 """.strip()
 
 DIRMACH = """
-for n,d in %s.items():
- if isinstance(d,tuple):%s;f=open(n,"w");f.write(S);f.close();os.chmod(n,d[0])
+for n,d in%s.items():
+ if isinstance(d,tuple):%s;f=open(n,"w");f.write(S);f.close();os.chmod(n,d[1])
  elif not os.path.exists(n):os.mkdir(n)
 """.strip()
 
 FILEMACH = """
-for n,d in %s.items():%s;f=open(n,"w");f.write(%s)f.close();os.chmod(n,%d)
+for n,d in%s.items():%s;f=open(n,"w");f.write(S)f.close();os.chmod(n,d[1])
 """.strip()
 
 def pypressor(filenames, compression=bz2, encoding=base64, recursive=False, comment=True, shebang=True):
@@ -255,24 +252,22 @@ def pypressor(filenames, compression=bz2, encoding=base64, recursive=False, comm
                         context = context[name]
                         for file in files:
                             file, mode, cont = file_data(os.path.join(name, file))
-                            context[name+'/'+file] = mode, cont
+                            context[name+'/'+file] = cont, mode
                         context = oldcontext
 
                 else:
                     for file in os.listdir(filename):
                         file, mode, cont = file_data(os.path.join(filename, file))
-                        files[os.path.basename(os.path.abspath(filename))+'/'+os.path.basename(file)] = mode, cont
+                        files[os.path.basename(os.path.abspath(filename))+'/'+os.path.basename(file)] = cont, mode
 
             else:
                 if os.path.basename(filename) != filename:
                     needs_dirmach = True
                 filename, mode, cont = file_data(filename)
-                files[filename] = mode, cont
+                files[filename] = cont, mode
 
         data += (DIRMACH if needs_dirmach else FILEMACH)
-        data %= compression.decoder
-        data %= encoding.decoder
-        data %= tuple("d[%d]"%i for i in xrange(encoding.decoder_args))
+        data %= (compact_repr(files), compression.decoder % encoding.decoder % "d[1]")
 
     return data
 
